@@ -29,22 +29,17 @@ User.pre("save", function(next) {
   });
 });
 
-// jul 4 broken way
-// User.methods.checkPassword = function(plainTextPW, callBack) {
-//   bcrypt.compare(plainTextPW, this.password, (err, isMatch) => {
-//     if (err) return callBack(err);
-//     callBack(null, isMatch);
-//   });
+User.methods.checkPassword = function(plainTextPW, callBack) {
+  bcrypt.compare(plainTextPW, this.password, (err, isMatch) => {
+    if (err) return callBack(err);
+    callBack(null, isMatch);
+  });
+};
+
+// User.methods.checkToken = token => {
+//   if (this.token === token) {
+//     return true;
+//   } else return this;
 // };
-
-User.methods.checkPassword = function(passwordGuess) {
-  return bcrypt.compare(passwordGuess, this.password);
-};
-
-User.methods.checkToken = function(token) {
-  if (this.token === token) {
-    return true;
-  } else return this.token;
-};
 
 module.exports = mongoose.model("User", User);

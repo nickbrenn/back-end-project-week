@@ -33,22 +33,12 @@ server.get("/", (req, res) => {
 
 // Authentification and token stuff
 
-const getTokenForUser = user => {
-  const timestamp = new Date().getTime();
-  const payload = {
-    sub: user._id,
-    iat: timestamp,
-    username: user.username
-  };
-  const options = {
-    expiresIn: "24h"
-  };
-  return jwt.sign(payload, secret, options);
+const getTokenForUser = userObject => {
+  return jwt.sign(userObject, secret, { expiresIn: "1h" });
 };
 
 const validateToken = (req, res, next) => {
   const token = req.headers.authorization;
-  const username = req.headers.username;
   if (!token) {
     res
       .status(422)
@@ -60,37 +50,28 @@ const validateToken = (req, res, next) => {
           .status(401)
           .json({ error: "Token invalid, please login", message: err });
       } else {
-        // User.findOne({ username: username, token: token })
-        //   .then(res => {
-        //     next();
-        //   })
-        //   .catch(err => {
-        //     res
-        //       .status(500)
-        //       .json({ error: "This token is for the wrong user!" });
-        //   });
-        next();
-        User.findOne({ token }, (err, user) => {
-          if (err) {
-            return res.status(500).json({ error: "Invalid Username/Password" });
-          }
+        // User.findOne({ token }, (err, user) => {
+        //   if (err) {
+        //     return res.status(500).json({ error: "Invalid Username/Password" });
+        //   }
 
-          if (!user) {
-            return res
-              .status(422)
-              .json({ error: "No user with that username in our DB" });
-          }
-          if (user.checkToken(token) === true) {
-            next();
-          } else {
-            res.status(422).json({
-              error: "tokens dont match",
-              token: token,
-              USERTOKEN: user.token,
-              returnCheckToken: user.checkToken(token)
-            });
-          }
-        });
+        //   if (!user) {
+        //     return res
+        //       .status(422)
+        //       .json({ error: "No user with that username in our DB" });
+        //   }
+        //   if (user.checkToken(token) === true) {
+        //     next();
+        //   } else {
+        //     res.status(422).json({
+        //       error: "tokens dont match",
+        //       token: token,
+        //       USERTOKEN: user.token,
+        //       returnCheckToken: user.checkToken(token)
+        //     });
+        //   }
+        // });
+        next();
       }
     });
   }
@@ -121,27 +102,34 @@ server.post("/register", (req, res) => {
 
 server.post("/login", (req, res) => {
   const { username, password } = req.body;
-  User.findOne({ username })
-    .then(user => {
-      if (user) {
-        user
-          .checkPassword(password)
-          .then(isMatch => {
-            if (isMatch) {
-              const token = getTokenForUser({ username: user.username });
-              const userData = {
-                id: user._id,
-                username: user.username
-              };
-              res.json({ userData, token });
-            } else {
-              return res.status(422).json({ error: "passwords dont match" });
-            }
-          })
-          .catch(err => res.json(err));
+  User.findOne({ username }, (err, user) => {
+    if (err) {
+      return res.status(500).json({ error: "Invalid Username/Password" });
+    }
+
+    if (!user) {
+      return res
+        .status(422)
+        .json({ error: "No user with that username in our DB" });
+    }
+
+    user.checkPassword(password, (err, isMatch) => {
+      if (err) {
+        return res.status(422).json({ error: "passwords dont match" });
       }
-    })
-    .catch(err => res.json(err));
+
+      if (isMatch) {
+        const token = getTokenForUser({ username: user.username });
+        const userData = {
+          id: user._id,
+          username: user.username
+        };
+        res.json({ userData, token });
+      } else {
+        return res.status(422).json({ error: "passwords dont match" });
+      }
+    });
+  });
 });
 
 // Note routes ========================================================
